@@ -149,7 +149,7 @@ script = ExtResource("1_hbec1")
 shape = SubResource("CapsuleShape2D_id4if")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="CharacterBody2D"]
-position = Vector2(309, -277.5)
+position = Vector2(451, 339)
 scale = Vector2(13.875, 12.5625)
 sprite_frames = SubResource("SpriteFrames_fbmh6")
 animation = &"Walk Down"

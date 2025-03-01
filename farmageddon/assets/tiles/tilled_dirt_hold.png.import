@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://duykv6ymwpdd7"
-path="res://.godot/imported/Fences.png-26724eeb0492b7240119de373a63a8da.ctex"
+uid="uid://ub2whyh2m6c4"
+path="res://.godot/imported/tilled_dirt_hold.png-d29bb2801cabb42b37963a03e58df5a3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png"
-dest_files=["res://.godot/imported/Fences.png-26724eeb0492b7240119de373a63a8da.ctex"]
+source_file="res://assets/tiles/tilled_dirt_hold.png"
+dest_files=["res://.godot/imported/tilled_dirt_hold.png-d29bb2801cabb42b37963a03e58df5a3.ctex"]
 
 [params]
 

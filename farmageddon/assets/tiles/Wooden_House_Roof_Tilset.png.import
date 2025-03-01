@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://btwn7j2wp203p"
-path="res://.godot/imported/Wooden_House_Walls_Tilset.png-4db180902850c533714e0ba9d79a017e.ctex"
+uid="uid://i5n3mafikgrm"
+path="res://.godot/imported/Wooden_House_Roof_Tilset.png-65075cc3f088268a7e4ca811849ff1d8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Sprout Lands - Sprites - Basic pack/Tilesets/Wooden_House_Walls_Tilset.png"
-dest_files=["res://.godot/imported/Wooden_House_Walls_Tilset.png-4db180902850c533714e0ba9d79a017e.ctex"]
+source_file="res://assets/tiles/Wooden_House_Roof_Tilset.png"
+dest_files=["res://.godot/imported/Wooden_House_Roof_Tilset.png-65075cc3f088268a7e4ca811849ff1d8.ctex"]
 
 [params]
 
