@@ -1,0 +1,53 @@
+[gd_scene load_steps=5 format=3 uid="uid://swieqcoxem6x"]
+
+[ext_resource type="PackedScene" uid="uid://dmr0fcamx7t56" path="res://Addons/addons/virtual_joystick/virtual_joystick_scene.tscn" id="1_urk8w"]
+[ext_resource type="Script" path="res://Addons/addons/virtual_joystick/virtual_joystick.gd" id="2_ltgew"]
+[ext_resource type="Script" path="res://Scenes/ButtonControl.gd" id="3_g87gr"]
+[ext_resource type="Texture2D" uid="uid://chg0akdbap3qu" path="res://assets/Sprout Lands - Sprites - Basic pack/Characters/Tools.png" id="4_py6wi"]
+
+[node name="UI" type="Node2D"]
+position = Vector2(323, 50)
+scale = Vector2(8.4, 8.4)
+
+[node name="GUI" type="MarginContainer" parent="."]
+offset_left = -39.0
+offset_top = -6.0
+offset_right = 99.0
+offset_bottom = 71.0
+
+[node name="VirtualStick" type="Control" parent="GUI"]
+layout_mode = 2
+
+[node name="Virtual Joystick" parent="GUI/VirtualStick" instance=ExtResource("1_urk8w")]
+layout_mode = 1
+offset_left = 7.69048
+offset_top = -18.7381
+offset_right = 107.69
+offset_bottom = 47.2619
+script = ExtResource("2_ltgew")
+
+[node name="ButtonControl" type="Control" parent="GUI"]
+layout_mode = 2
+script = ExtResource("3_g87gr")
+
+[node name="ActionButton" type="Button" parent="GUI/ButtonControl"]
+layout_mode = 0
+offset_left = 107.69
+offset_top = 50.6429
+offset_right = 123.69
+offset_bottom = 65.6429
+
+[node name="DropButton" type="Button" parent="GUI/ButtonControl"]
+layout_mode = 0
+offset_left = 126.857
+offset_top = 65.881
+offset_right = 134.857
+offset_bottom = 73.881
+
+[node name="Item" type="Sprite2D" parent="GUI/ButtonControl"]
+texture_filter = 1
+position = Vector2(115.786, 59.3333)
+scale = Vector2(0.982144, 1.0119)
+texture = ExtResource("4_py6wi")
+region_enabled = true
+region_rect = Rect2(39.6628, 30.9708, 8.25364, 14.9158)
