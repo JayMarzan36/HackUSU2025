@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mplbli8dcj47"
-path="res://.godot/imported/Tilled_Dirt_v2.png-769afe1b48d811839159e86d1b16b8ff.ctex"
+uid="uid://c1wgctmd87a3y"
+path="res://.godot/imported/hills.png-b36bf4cd8d18cee21620376391ba0e2c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled_Dirt_v2.png"
-dest_files=["res://.godot/imported/Tilled_Dirt_v2.png-769afe1b48d811839159e86d1b16b8ff.ctex"]
+source_file="res://assets/tiles/hills.png"
+dest_files=["res://.godot/imported/hills.png-b36bf4cd8d18cee21620376391ba0e2c.ctex"]
 
 [params]
 
