@@ -1,7 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://cwnku8x6gisph"]
 
 [sub_resource type="GDScript" id="GDScript_87k6s"]
-script/source = "extends Control
+script/source = "extends Node
 
 # Network and room management variables
 var server_port = 8910
@@ -12,26 +12,29 @@ var connected_players = []
 var is_host = false
 
 # UI references
-onready var main_panel = $MainPanel
-onready var host_panel = $HostPanel
-onready var join_panel = $JoinPanel
-onready var lobby_panel = $LobbyPanel
-onready var name_input = $MainPanel/VBoxContainer/NameInput
-onready var room_code_display = $HostPanel/VBoxContainer/RoomCodeDisplay
-onready var room_code_input = $JoinPanel/VBoxContainer/RoomCodeInput
-onready var player_list = $LobbyPanel/VBoxContainer/PlayerList
-onready var start_game_button = $LobbyPanel/VBoxContainer/StartGameButton
+@onready var main_panel = $MainPanel
+@onready var host_panel = $HostPanel
+@onready var join_panel = $JoinPanel
+@onready var lobby_panel = $LobbyPanel
+@onready var name_input = $MainPanel/VBoxContainer/NameInput
+@onready var room_code_display = $HostPanel/VBoxContainer/RoomCodeDisplay
+@onready var room_code_input = $JoinPanel/VBoxContainer/RoomCodeInput
+@onready var player_list = $LobbyPanel/VBoxContainer/PlayerList
+@onready var start_game_button = $LobbyPanel/VBoxContainer/StartGameButton
 
 # Network peer
-var network = NetworkedMultiplayerENet.new()
+var network = ENetMultiplayerPeer.new()
 
 func _ready():
 	# Connect network signals
-	get_tree().connect(\"network_peer_connected\", self, \"_player_connected\")
-	get_tree().connect(\"network_peer_disconnected\", self, \"_player_disconnected\")
-	get_tree().connect(\"connected_to_server\", self, \"_connected_to_server\")
-	get_tree().connect(\"connection_failed\", self, \"_connection_failed\")
-	get_tree().connect(\"server_disconnected\", self, \"_server_disconnected\")
+	multiplayer.peer_connected.connect(_player_connected)
+	multiplayer.peer_disconnected.connect(_player_disconnected)
+	multiplayer.connected_to_server.connect(_connected_to_server)
+	multiplayer.connection_failed.connect(_connection_failed)
+	multiplayer.server_disconnected.connect(_server_disconnected)
+	
+	# Save bandwith
+	multiplayer.server_relay = false
 	
 	# Initialize UI - Hide all panels except main
 	host_panel.visible = false
@@ -41,12 +44,15 @@ func _ready():
 	
 	# Only show start game button for host
 	start_game_button.visible = false
-
+	
 # UI Button handlers
 func _on_HostButton_pressed():
 	if name_input.text.strip_edges() == \"\":
 		_show_error(\"Please enter a name\")
 		return
+	
+	print(\"Host button pressed\")
+
 		
 	player_name = name_input.text.strip_edges()
 	_create_room()
@@ -80,13 +86,14 @@ func _on_StartGameButton_pressed():
 	network_manager.room_code = room_code
 	
 	# Tell all clients to start the game
+	get_tree().paused = false
 	rpc(\"start_game\")
 	
 func _on_BackButton_pressed():
 	# Clean up any existing connections
-	if network.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
-		network.close_connection()
-		get_tree().network_peer = null
+	if network.get_connection_status() != ENetMultiplayerPeer.CONNECTION_DISCONNECTED:
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = null
 	
 	# Return to main panel
 	host_panel.visible = false
@@ -107,11 +114,11 @@ func _create_room():
 	
 	# Create the server
 	network.create_server(server_port, max_players)
-	get_tree().network_peer = network
+	multiplayer.multiplayer_peer	 = network
 	
 	# Add self to players list
 	connected_players.append({
-		id = get_tree().get_network_unique_id(),
+		id = multiplayer.get_unique_id(),
 		name = player_name,
 		is_host = true
 	})
@@ -126,7 +133,7 @@ func _join_room():
 	
 	# Connect to the server
 	network.create_client(ip, server_port)
-	get_tree().network_peer = network
+	multiplayer.multiplayer_peer = network
 
 # Network callback functions
 func _player_connected(id):
@@ -168,12 +175,14 @@ func _server_disconnected():
 	_on_BackButton_pressed()
 
 # Remote procedure calls (RPCs)
-remote func register_player(players):
+@rpc
+func register_player(players):
 	# Called on clients when they first connect
 	connected_players = players
 	_update_player_list()
 
-remote func register_player_info(id, name):
+@rpc
+func register_player_info(id, name):
 	# Called on the host when a new player connects
 	# Add the new player to our list
 	connected_players.append({
@@ -188,7 +197,8 @@ remote func register_player_info(id, name):
 	# Tell everyone about the new player
 	rpc(\"add_player\", id, name, false)
 
-remote func add_player(id, name, is_host):
+@rpc
+func add_player(id, name, is_host):
 	# Called on all clients when a new player joins
 	var found = false
 	
@@ -210,7 +220,8 @@ remote func add_player(id, name, is_host):
 		
 	_update_player_list()
 
-remote func remove_player(id):
+@rpc
+func remove_player(id):
 	# Called on all clients when a player disconnects
 	for i in range(connected_players.size()):
 		if connected_players[i].id == id:
@@ -219,7 +230,8 @@ remote func remove_player(id):
 			
 	_update_player_list()
 
-remote func start_game():
+@rpc
+func start_game():
 	# Called on all clients when the host starts the game
 	# Load the game scene
 	get_tree().change_scene(\"res://Game.tscn\") # Change this to your game scene path
@@ -264,7 +276,7 @@ func _show_join_panel():
 	host_panel.visible = false
 	join_panel.visible = true
 	lobby_panel.visible = false
-
+	
 func _show_lobby_panel():
 	main_panel.visible = false
 	host_panel.visible = false
@@ -275,14 +287,21 @@ func _show_error(message):
 	# In a real implementation, display an error dialog
 	print(\"ERROR: \" + message)
 	# OS.alert(message, \"Error\")
+
+
+func _on_join_button_pressed() -> void:
+	pass # Replace with function body.
 "
 
 [node name="MainMenu" type="Node2D"]
 script = SubResource("GDScript_87k6s")
 
 [node name="MainPanel" type="Panel" parent="."]
-offset_right = 40.0
-offset_bottom = 40.0
+visible = false
+offset_left = 300.0
+offset_top = 300.0
+offset_right = 340.0
+offset_bottom = 340.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MainPanel"]
 layout_mode = 1
@@ -292,7 +311,7 @@ anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -33.0
 offset_top = -44.0
-offset_right = 34.0
+offset_right = 120.0
 offset_bottom = 88.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -313,14 +332,15 @@ layout_mode = 2
 text = "Join"
 
 [node name="HostPanel" type="Panel" parent="."]
-visible = false
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 300.0
+offset_top = 300.0
+offset_right = 340.0
+offset_bottom = 340.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HostPanel"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 200.0
+offset_bottom = 139.0
 
 [node name="TitleLabel" type="Label" parent="HostPanel/VBoxContainer"]
 layout_mode = 2
@@ -343,13 +363,15 @@ text = "Back"
 
 [node name="JoinPanel" type="Panel" parent="."]
 visible = false
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 300.0
+offset_top = 300.0
+offset_right = 340.0
+offset_bottom = 340.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="JoinPanel"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 153.0
+offset_bottom = 128.0
 
 [node name="TitleLabel" type="Label" parent="JoinPanel/VBoxContainer"]
 layout_mode = 2
@@ -374,8 +396,8 @@ offset_bottom = 40.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="LobbyPanel"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 153.0
+offset_bottom = 124.0
 
 [node name="TitleLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
 layout_mode = 2
@@ -395,3 +417,9 @@ text = "Start"
 [node name="BackButton" type="Button" parent="LobbyPanel/VBoxContainer"]
 layout_mode = 2
 text = "Back"
+
+[connection signal="pressed" from="MainPanel/VBoxContainer/HostButton" to="." method="_on_HostButton_pressed"]
+[connection signal="pressed" from="MainPanel/VBoxContainer/JoinButton" to="." method="_on_JoinButton_pressed"]
+[connection signal="pressed" from="HostPanel/VBoxContainer/BackButton" to="." method="_on_BackButton_pressed"]
+[connection signal="pressed" from="JoinPanel/VBoxContainer/BackButton" to="." method="_on_BackButton_pressed"]
+[connection signal="pressed" from="LobbyPanel/VBoxContainer/BackButton" to="." method="_on_BackButton_pressed"]
