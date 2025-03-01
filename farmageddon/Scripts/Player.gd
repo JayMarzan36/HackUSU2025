@@ -13,6 +13,10 @@ var target_tile = Vector2i(0, 0)
 var farm = null
 var tilemap = null
 
+# GUI reference
+var gui_canvas_layer = null
+var joystick = null
+
 # Called when the node enters the scene tree for the first time
 func _ready():
 	# Add a camera as a child of the player
@@ -27,6 +31,9 @@ func _ready():
 	
 	# Find the farm on ready
 	find_farm()
+	
+	# Find and initialize the GUI reference
+	find_gui()
 
 # Create a visual indicator for the tile we're going to interact with
 func create_outline_indicator():
@@ -134,6 +141,9 @@ func _process(delta: float) -> void:
 	# Handle interaction with farm
 	if Input.is_action_just_pressed("ui_accept"):  # Enter key
 		interact_with_farm()
+		
+	# Update the GUI position
+	update_gui_position()
 
 # Update the position of the indicator to show the tile we would interact with
 func update_indicator_position():
@@ -202,3 +212,47 @@ func interact_with_farm():
 		# Fallback to the world position method
 		var world_pos = tilemap.to_global(tilemap.map_to_local(target_tile))
 		farm.on_player_interaction(world_pos)
+		
+# Find the GUI canvas layer and joystick
+func find_gui():
+	var main = get_tree().get_root().get_node_or_null("Main")
+	if not main:
+		main = get_tree().current_scene
+	
+	if main:
+		gui_canvas_layer = main.get_node_or_null("CanvasLayer")
+		if gui_canvas_layer:
+			joystick = gui_canvas_layer.get_node_or_null("TouchScreenJoystick")
+			if joystick:
+				print("GUI and joystick references found")
+			else:
+				print("Joystick not found in CanvasLayer")
+		else:
+			print("CanvasLayer not found in Main node")
+	
+	if not gui_canvas_layer or not joystick:
+		print("WARNING: Could not find GUI or joystick references")
+
+# Update the GUI position relative to the player
+func update_gui_position():
+	if not gui_canvas_layer or not joystick:
+		return
+		
+	# Calculate the desired position for the joystick
+	# This keeps it in the bottom left corner of the screen, relative to the camera
+	var viewport_rect = get_viewport_rect()
+	var camera = get_node_or_null("Camera2D")
+	
+	if camera:
+		# Get the current camera offset and convert to screen position
+		var camera_offset = camera.get_screen_center_position()
+		
+		# Position the joystick at the bottom left of the screen
+		# You can adjust these offsets as needed
+		var joystick_pos = Vector2(
+			camera_offset.x - viewport_rect.size.x/2 + joystick.size.x/2, 
+			camera_offset.y + viewport_rect.size.y/2 - joystick.size.y/2
+		)
+		
+		# Apply the position to the joystick
+		joystick.global_position = joystick_pos

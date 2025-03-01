@@ -1,36 +1,12 @@
-[gd_scene load_steps=6 format=3 uid="uid://d0aj08kko3p0m"]
+[gd_scene load_steps=4 format=3 uid="uid://d0aj08kko3p0m"]
 
 [ext_resource type="Script" path="res://Scripts/main.gd" id="1_y1vrv"]
 [ext_resource type="PackedScene" uid="uid://d3f27qjaiyycj" path="res://Scenes/farm.tscn" id="2_ap3o1"]
-[ext_resource type="PackedScene" uid="uid://db7er5dws25p1" path="res://Scenes/Player.tscn" id="3_uopto"]
-[ext_resource type="PackedScene" uid="uid://jaj4jn61o0dg" path="res://scenes/player.tscn" id="1_fjjpo"]
-[ext_resource type="Script" path="res://scripts/touch_screen_joystick.gd" id="2_duapw"]
+[ext_resource type="PackedScene" uid="uid://ddnghesgvey25" path="res://Scenes/PlayerWithGUI.tscn" id="2_gwedg"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_y1vrv")
-player_scene = ExtResource("3_uopto")
+player_scene = ExtResource("2_gwedg")
 
 [node name="Farm" parent="." instance=ExtResource("2_ap3o1")]
 position = Vector2(1, -5)
-
-[node name="Player" parent="." instance=ExtResource("1_fjjpo")]
-position = Vector2(213, 111)
-
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
-
-[node name="TouchScreenJoystick" type="Control" parent="CanvasLayer"]
-layout_mode = 3
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -386.0
-offset_right = 466.0
-grow_vertical = 0
-pivot_offset = Vector2(233, 193)
-script = ExtResource("2_duapw")
-anti_aliased = true
-deadzone = 40.0
-smooth_reset = true
-smooth_speed = 15.0
-change_opacity_when_touched = true
-use_input_actions = true

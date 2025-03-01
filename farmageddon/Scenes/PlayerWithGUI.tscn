@@ -7,6 +7,8 @@
 
 [node name="Player" parent="." instance=ExtResource("1_7wnu6")]
 position = Vector2(586, 354)
+scale = Vector2(10, 10)
 
-[node name="UI" parent="." instance=ExtResource("2_a0pu6")]
-position = Vector2(323, 57)
+[node name="UI" parent="Player" instance=ExtResource("2_a0pu6")]
+position = Vector2(-26.3, -29.7)
+scale = Vector2(0.84, 0.84)
