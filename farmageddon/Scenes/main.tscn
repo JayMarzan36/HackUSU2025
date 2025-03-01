@@ -1,0 +1,12 @@
+[gd_scene load_steps=4 format=3 uid="uid://d0aj08kko3p0m"]
+
+[ext_resource type="Script" path="res://Scripts/main.gd" id="1_y1vrv"]
+[ext_resource type="PackedScene" uid="uid://d3f27qjaiyycj" path="res://Scenes/farm.tscn" id="2_ap3o1"]
+[ext_resource type="PackedScene" uid="uid://db7er5dws25p1" path="res://Scenes/Player.tscn" id="3_uopto"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_y1vrv")
+player_scene = ExtResource("3_uopto")
+
+[node name="Farm" parent="." instance=ExtResource("2_ap3o1")]
+position = Vector2(1, -5)

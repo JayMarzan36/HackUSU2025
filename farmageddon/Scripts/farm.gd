@@ -20,6 +20,16 @@ var WATERED_DIRT_COORD = Vector2i(2, 2)
 var BASE_LAYER = 0       # For grass, hills, water
 var FARMING_LAYER = 1    # For tilled and watered soil
 
+# Dictionary to define which tile types are walkable
+var walkable_tiles = {
+	"grass": true,
+	"tilled": true,
+	"watered": true,
+	"water": false,
+	"hills": false,
+	"none": false  # Default for undefined tiles
+}
+
 func _ready():
 	print("Farm script starting - with farming tiles on top layer")
 	
@@ -42,9 +52,15 @@ func initialize_tile_states():
 			var pos = Vector2i(x, y)
 			var source_id = tilemap.get_cell_source_id(BASE_LAYER, pos)
 			
-			# If this is a grass tile, mark it as farmable
+			# Categorize base tiles
 			if source_id == GRASS_SOURCE_ID:
 				tile_states[pos] = "grass"
+			elif source_id == HILLS_SOURCE_ID:
+				tile_states[pos] = "hills"
+			elif source_id == WATER_SOURCE_ID:
+				tile_states[pos] = "water"
+			elif source_id == -1:  # No tile
+				tile_states[pos] = "none"
 			
 			# Check if there's already something on the farming layer
 			var farming_source = tilemap.get_cell_source_id(FARMING_LAYER, pos)
@@ -75,40 +91,105 @@ func water_soil(map_position):
 	return false
 
 # Function to handle player interactions with the farm
-func _on_player_use_tool(tool_type, world_position):
-	# Convert world position to map coordinates
+func on_player_interaction(world_position):
+	# This is a simpler, more direct approach that doesn't rely on complex coordinate conversions
 	var map_position = tilemap.local_to_map(tilemap.to_local(world_position))
 	
-	# Perform the appropriate action based on the tool
-	match tool_type:
-		"hoe":
-			till_soil(map_position)
-		"watering_can":
-			water_soil(map_position)
+	print("Interaction at map position:", map_position)
+	
+	# Check if this position is in our tile_states dictionary
+	if map_position in tile_states:
+		var current_state = tile_states[map_position]
+		print("Current tile state:", current_state)
+		
+		# Handle based on current state
+		if current_state == "grass":
+			if till_soil(map_position):
+				print("Successfully tilled soil at", map_position)
+		elif current_state == "tilled":
+			if water_soil(map_position):
+				print("Successfully watered soil at", map_position)
+		elif current_state == "watered":
+			print("Tile is already watered")
+	else:
+		print("Not a farmable tile at", map_position)
 
-# Process input for testing
-func _input(event):
-	# Check for mouse clicks
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Convert mouse position to tile position
-		var mouse_pos = get_global_mouse_position()
-		var map_pos = tilemap.local_to_map(tilemap.to_local(mouse_pos))
+# Alternative function that directly takes a map position instead of world position
+func interact_at_tile(map_position: Vector2i):
+	print("Direct interaction at map position:", map_position)
+	
+	if map_position in tile_states:
+		var current_state = tile_states[map_position]
+		print("Current tile state:", current_state)
 		
-		print("Clicked at position:", map_pos)
+		if current_state == "grass":
+			if till_soil(map_position):
+				print("Successfully tilled soil at", map_position)
+		elif current_state == "tilled":
+			if water_soil(map_position):
+				print("Successfully watered soil at", map_position)
+		elif current_state == "watered":
+			print("Tile is already watered")
+	else:
+		print("Not a farmable tile at", map_position)
+
+# New function to check if a tile is walkable
+func is_tile_walkable(map_position: Vector2i) -> bool:
+	# Handle out-of-bounds
+	if not map_position in tile_states:
+		return false
 		
-		# Check what's at this position
-		if map_pos in tile_states:
-			var current_state = tile_states[map_pos]
-			print("Current state:", current_state, "at layer", FARMING_LAYER)
+	# Get the current state of this tile
+	var tile_state = tile_states[map_position]
+	
+	# Return whether this tile type is walkable
+	if tile_state in walkable_tiles:
+		return walkable_tiles[tile_state]
+	else:
+		return false
+
+# Function to check if player can move to a position
+func can_move_to(world_position: Vector2) -> bool:
+	var map_position = tilemap.local_to_map(tilemap.to_local(world_position))
+	return is_tile_walkable(map_position)
+
+# Function to validate player movement (for character controller)
+func validate_movement(from_position: Vector2, to_position: Vector2) -> Vector2:
+	# Check if destination is walkable
+	if can_move_to(to_position):
+		return to_position
+	else:
+		# If not walkable, return the original position
+		return from_position
+
+# Optional: Debug visualization for walkable vs non-walkable tiles
+func debug_draw_walkable_overlay():
+	var map_width = 30
+	var map_height = 30
+	
+	for x in range(map_width):
+		for y in range(map_height):
+			var pos = Vector2i(x, y)
 			
-			# Cycle through states: grass -> tilled -> watered
-			if current_state == "grass":
-				if till_soil(map_pos):
-					print("Tilled the soil!")
-			elif current_state == "tilled":
-				if water_soil(map_pos):
-					print("Watered the soil!")
-			elif current_state == "watered":
-				print("Already watered!")
-		else:
-			print("Not a farmable tile")
+			# Skip tiles that don't exist in our states
+			if not pos in tile_states:
+				continue
+				
+			# Define colors for walkable and non-walkable
+			var walkable_color = Color(0, 1, 0, 0.3)  # Green with transparency
+			var non_walkable_color = Color(1, 0, 0, 0.3)  # Red with transparency
+			
+			# Get world position of this tile
+			var world_pos = tilemap.map_to_local(pos)
+			
+			# Draw appropriately colored rectangle
+			var rect = Rect2(world_pos - Vector2(16, 16), Vector2(32, 32))
+			if is_tile_walkable(pos):
+				draw_rect(rect, walkable_color)
+			else:
+				draw_rect(rect, non_walkable_color)
+
+# Override _draw to visualize walkable tiles
+func _draw():
+	if OS.is_debug_build():  # Only in debug builds
+		debug_draw_walkable_overlay()
