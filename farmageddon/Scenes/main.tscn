@@ -9,4 +9,4 @@ script = ExtResource("1_y1vrv")
 player_scene = ExtResource("3_uopto")
 
 [node name="Farm" parent="." instance=ExtResource("2_ap3o1")]
-position = Vector2(1, -5)
+position = Vector2(-310, -320)

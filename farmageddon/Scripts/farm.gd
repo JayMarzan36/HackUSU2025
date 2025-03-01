@@ -9,16 +9,17 @@ var tile_states = {}
 var GRASS_SOURCE_ID = 0
 var HILLS_SOURCE_ID = 1
 var TILLED_DIRT_SOURCE_ID = 2
-var TILLED_DIRT_WATERED_SOURCE_ID = 3
 var WATER_SOURCE_ID = 4
 
-# Use tile coordinate (2, 2) for both tilled and watered dirt
+# Use tile coordinate (2, 2) for tilled dirt
 var TILLED_DIRT_COORD = Vector2i(0, 5)
-var WATERED_DIRT_COORD = Vector2i(2, 2)
 
 # Make sure to use the highest layer for farming tiles
 var BASE_LAYER = 0       # For grass, hills, water
-var FARMING_LAYER = 1    # For tilled and watered soil
+var FARMING_LAYER = 1    # For tilled soil
+
+# Color for watered tiles (darker version of normal tilled soil)
+var WATERED_TILE_COLOR = Color(0.6, 0.6, 0.6, 1.0)  # Darker gray modulation
 
 # Dictionary to define which tile types are walkable
 var walkable_tiles = {
@@ -47,6 +48,12 @@ func initialize_tile_states():
 	var map_width = 30
 	var map_height = 30
 	
+	# Check if we need an additional layer for watered tiles
+	var watered_overlay_layer = FARMING_LAYER + 1
+	if tilemap.get_layers_count() <= watered_overlay_layer:
+		tilemap.add_layer(watered_overlay_layer)
+		tilemap.set_layer_modulate(watered_overlay_layer, WATERED_TILE_COLOR)
+	
 	for x in range(map_width):
 		for y in range(map_height):
 			var pos = Vector2i(x, y)
@@ -64,10 +71,14 @@ func initialize_tile_states():
 			
 			# Check if there's already something on the farming layer
 			var farming_source = tilemap.get_cell_source_id(FARMING_LAYER, pos)
+			var watered_source = tilemap.get_cell_source_id(watered_overlay_layer, pos)
+			
 			if farming_source == TILLED_DIRT_SOURCE_ID:
-				tile_states[pos] = "tilled"
-			elif farming_source == TILLED_DIRT_WATERED_SOURCE_ID:
-				tile_states[pos] = "watered"
+				# If there's a tile in the watered overlay layer, it's watered
+				if watered_source != -1:
+					tile_states[pos] = "watered"
+				else:
+					tile_states[pos] = "tilled"
 	
 	print("Initialized with", tile_states.size(), "tracked tiles")
 
@@ -83,10 +94,23 @@ func till_soil(map_position):
 
 func water_soil(map_position):
 	if map_position in tile_states and tile_states[map_position] == "tilled":
-		# Place watered dirt on the farming layer
-		tilemap.set_cell(FARMING_LAYER, map_position, TILLED_DIRT_WATERED_SOURCE_ID, WATERED_DIRT_COORD)
+		# For Godot 4, we need to use the layer_modulate property to darken all tiles on a layer
+		# So we'll create a new utility layer specifically for dark overlays
+		var dark_overlay_layer = FARMING_LAYER + 1
+		
+		# Make sure we have enough layers
+		if tilemap.get_layers_count() <= dark_overlay_layer:
+			tilemap.add_layer(dark_overlay_layer)
+			
+		# Add the same tile to the overlay layer but with dark tint
+		tilemap.set_cell(dark_overlay_layer, map_position, TILLED_DIRT_SOURCE_ID, TILLED_DIRT_COORD)
+		
+		# Set the layer modulate for this layer to be darker
+		# This is a property of the entire layer, not individual cells
+		tilemap.set_layer_modulate(dark_overlay_layer, WATERED_TILE_COLOR)
+		
 		tile_states[map_position] = "watered"
-		print("Watered soil at", map_position, "on layer", FARMING_LAYER)
+		print("Watered soil at", map_position, "on layer", FARMING_LAYER, "with overlay on layer", dark_overlay_layer)
 		return true
 	return false
 
