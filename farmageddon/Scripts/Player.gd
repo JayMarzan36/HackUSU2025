@@ -1,6 +1,9 @@
 extends CharacterBody2D
 
+var tools = {"empty" : [0.0],"hoe" : [0.0], "waterCan" : [0.0], "axe" : [0.0]}
 @onready var _animated_sprite = $AnimatedSprite2D
+var toolPath = "res://assets/Sprout Lands - Sprites - Basic pack/Characters/Tools.png"
+@onready var currentTool = tools.get("empty")
 const SPEED = 300.0
 
 func get_input():
