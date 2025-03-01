@@ -1,0 +1,156 @@
+[gd_scene load_steps=21 format=3 uid="uid://db7er5dws25p1"]
+
+[ext_resource type="Script" path="res://Scripts/Player.gd" id="1_hbec1"]
+[ext_resource type="Texture2D" uid="uid://c0qh7y26pbxes" path="res://assets/Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png" id="2_4bb3n"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_id4if"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_au21h"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(0, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gseda"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(48, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o6f76"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(96, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3xbl4"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(144, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_aofve"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(0, 96, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4w28f"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(48, 96, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xj6e5"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(96, 96, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rc8vd"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(144, 96, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qv87n"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(0, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jxiao"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(48, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fuwpt"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(96, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5sio6"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(144, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a5c1c"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(0, 48, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6412i"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(48, 48, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bg8aw"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(96, 48, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_syg7r"]
+atlas = ExtResource("2_4bb3n")
+region = Rect2(144, 48, 48, 48)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_fbmh6"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_au21h")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gseda")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o6f76")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3xbl4")
+}],
+"loop": true,
+"name": &"Walk Down",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_aofve")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4w28f")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xj6e5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rc8vd")
+}],
+"loop": true,
+"name": &"Walk Left",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qv87n")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jxiao")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fuwpt")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5sio6")
+}],
+"loop": true,
+"name": &"Walk Right",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a5c1c")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6412i")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bg8aw")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_syg7r")
+}],
+"loop": true,
+"name": &"Walk Up",
+"speed": 10.0
+}]
+
+[node name="Player" type="Node2D"]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="."]
+script = ExtResource("1_hbec1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D"]
+shape = SubResource("CapsuleShape2D_id4if")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="CharacterBody2D"]
+position = Vector2(309, -277.5)
+scale = Vector2(13.875, 12.5625)
+sprite_frames = SubResource("SpriteFrames_fbmh6")
+animation = &"Walk Down"
+frame_progress = 0.453672
