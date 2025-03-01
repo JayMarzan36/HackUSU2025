@@ -6,7 +6,9 @@
 [node name="PlayerWithGUI" type="Node2D"]
 
 [node name="Player" parent="." instance=ExtResource("1_7wnu6")]
-position = Vector2(586, 354)
+position = Vector2(0, 0)
+scale = Vector2(10, 10)
 
-[node name="UI" parent="." instance=ExtResource("2_a0pu6")]
-position = Vector2(323, 57)
+[node name="UI" parent="Player" instance=ExtResource("2_a0pu6")]
+position = Vector2(-25.1, -29.4)
+scale = Vector2(0.8, 0.8)

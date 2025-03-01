@@ -20,6 +20,9 @@ var WATERED_DIRT_COORD = Vector2i(2, 2)
 var BASE_LAYER = 0       # For grass, hills, water
 var FARMING_LAYER = 1    # For tilled and watered soil
 
+# Flag to toggle farm input processing
+var farm_mode_active = false  # Set to false by default so joystick works
+
 func _ready():
 	print("Farm script starting - with farming tiles on top layer")
 	
@@ -75,7 +78,7 @@ func water_soil(map_position):
 	return false
 
 # Function to handle player interactions with the farm
-func _on_player_use_tool(tool_type, world_position):
+func _on_player_use_tool(tool_type, world_position):  # Fixed function name
 	# Convert world position to map coordinates
 	var map_position = tilemap.local_to_map(tilemap.to_local(world_position))
 	
@@ -86,8 +89,12 @@ func _on_player_use_tool(tool_type, world_position):
 		"watering_can":
 			water_soil(map_position)
 
-# Process input for testing
-func _input(event):
+# Process input for testing - now with conditional execution
+func _unhandled_input(event):  # Changed from _input to _unhandled_input
+	# Only process farm inputs if farm mode is active
+	if not farm_mode_active:
+		return  # Skip processing if farm mode is inactive
+		
 	# Check for mouse clicks
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Convert mouse position to tile position
@@ -112,3 +119,15 @@ func _input(event):
 				print("Already watered!")
 		else:
 			print("Not a farmable tile")
+			
+		# Accept the event to prevent it from propagating
+		get_viewport().set_input_as_handled()
+
+# Methods to toggle farm mode
+func activate_farm_mode():
+	farm_mode_active = true
+	print("Farm mode activated")
+	
+func deactivate_farm_mode():
+	farm_mode_active = false
+	print("Farm mode deactivated")

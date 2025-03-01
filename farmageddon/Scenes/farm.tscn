@@ -4,7 +4,8 @@
 [ext_resource type="TileSet" uid="uid://br13shaoq70jx" path="res://assets/farm_tileset.tres" id="1_ocb47"]
 
 [node name="Farm" type="Node2D"]
-scale = Vector2(2, 2)
+texture_filter = 1
+scale = Vector2(10, 10)
 script = ExtResource("1_0chwk")
 
 [node name="FarmTileMap" type="TileMap" parent="."]
