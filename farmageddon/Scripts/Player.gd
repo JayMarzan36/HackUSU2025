@@ -87,41 +87,45 @@ func get_input():
 		# Update indicator position when facing direction changes
 		update_indicator_position()
 	
-	# Calculate desired velocity
-	var desired_velocity = input_direction * SPEED
+	# Calculate desired velocity (simpler approach)
+	velocity = input_direction * SPEED
 	
-	# Check collision before applying movement
-	if farm and farm.has_method("can_move_to"):
+	# If we have the farm reference and the player is moving, check collisions
+	if farm and farm.has_method("can_move_to") and input_direction != Vector2.ZERO:
 		# Calculate the target position
-		var target_position = global_position + desired_velocity * get_physics_process_delta_time()
+		var target_position = global_position + velocity * get_physics_process_delta_time()
 		
 		# Only apply velocity if the target position is walkable
-		if farm.can_move_to(target_position):
-			velocity = desired_velocity
-		else:
+		if !farm.can_move_to(target_position):
 			# Try sliding along walls by checking x and y movement separately
 			var x_position = Vector2(target_position.x, global_position.y)
 			var y_position = Vector2(global_position.x, target_position.y)
 			
 			if farm.can_move_to(x_position):
-				velocity.x = desired_velocity.x
+				velocity.x = input_direction.x * SPEED
 				velocity.y = 0
 			elif farm.can_move_to(y_position):
 				velocity.x = 0
-				velocity.y = desired_velocity.y
+				velocity.y = input_direction.y * SPEED
 			else:
 				velocity = Vector2.ZERO
-	else:
-		# If can't check collision, just move normally
-		velocity = desired_velocity
 	
 func _physics_process(delta: float) -> void:
 	get_input()
 	move_and_slide()
 
 func _process(delta: float) -> void:
-	# Handle animation
-	if velocity.length() > 0:
+	# Handle animation using direct input checks (simpler approach)
+	if Input.is_action_pressed("ui_left"):
+		animated_sprite.play("Walk Left")
+	elif Input.is_action_pressed("ui_right"):
+		animated_sprite.play("Walk Right")
+	elif Input.is_action_pressed("ui_up"):
+		animated_sprite.play("Walk Up")
+	elif Input.is_action_pressed("ui_down"):
+		animated_sprite.play("Walk Down")
+	# If no direct input but velocity exists (from joystick), use the velocity-based animation
+	elif velocity.length() > 0:
 		if abs(velocity.x) > abs(velocity.y):
 			if velocity.x > 0:
 				animated_sprite.play("Walk Right")
@@ -215,44 +219,113 @@ func interact_with_farm():
 		
 # Find the GUI canvas layer and joystick
 func find_gui():
-	var main = get_tree().get_root().get_node_or_null("Main")
-	if not main:
-		main = get_tree().current_scene
+	# Try multiple approaches to find the joystick
 	
+	# Method 1: Look for it in the scene tree, starting from the root
+	var root = get_tree().get_root()
+	
+	# Try to find any CanvasLayer in the scene
+	var canvas_layers = []
+	for i in range(root.get_child_count()):
+		var node = root.get_child(i)
+		_find_canvas_layers_recursive(node, canvas_layers)
+	
+	# Check all found canvas layers for a joystick
+	for layer in canvas_layers:
+		gui_canvas_layer = layer
+		joystick = _find_joystick_in_node(layer)
+		if joystick:
+			print("Found joystick in CanvasLayer: " + layer.get_path_to(joystick))
+			return
+	
+	# Method 2: Direct path from the root
+	var main = get_tree().current_scene
 	if main:
-		gui_canvas_layer = main.get_node_or_null("CanvasLayer")
-		if gui_canvas_layer:
-			joystick = gui_canvas_layer.get_node_or_null("TouchScreenJoystick")
+		# Try a few common paths
+		var possible_paths = [
+			"CanvasLayer/TouchScreenJoystick", 
+			"GUI/TouchScreenJoystick",
+			"UI/TouchScreenJoystick",
+			"HUD/TouchScreenJoystick"
+		]
+		
+		for path in possible_paths:
+			joystick = main.get_node_or_null(path)
 			if joystick:
-				print("GUI and joystick references found")
-			else:
-				print("Joystick not found in CanvasLayer")
-		else:
-			print("CanvasLayer not found in Main node")
+				print("Found joystick at path: " + path)
+				return
 	
-	if not gui_canvas_layer or not joystick:
-		print("WARNING: Could not find GUI or joystick references")
+	# If we reach here, we couldn't find the joystick
+	print("WARNING: Could not find joystick in the scene tree")
+	
+# Helper function to find all CanvasLayers in the scene
+func _find_canvas_layers_recursive(node, result_array):
+	if node is CanvasLayer:
+		result_array.append(node)
+	
+	for i in range(node.get_child_count()):
+		_find_canvas_layers_recursive(node.get_child(i), result_array)
+
+# Helper function to find a joystick within a node
+func _find_joystick_in_node(node):
+	# Look for a node with "joystick" in its name (case insensitive)
+	for i in range(node.get_child_count()):
+		var child = node.get_child(i)
+		if "joystick" in child.name.to_lower():
+			return child
+		
+		# Recursively search in children
+		var found = _find_joystick_in_node(child)
+		if found:
+			return found
+	
+	return null
 
 # Update the GUI position relative to the player
 func update_gui_position():
-	if not gui_canvas_layer or not joystick:
-		return
-		
-	# Calculate the desired position for the joystick
-	# This keeps it in the bottom left corner of the screen, relative to the camera
-	var viewport_rect = get_viewport_rect()
-	var camera = get_node_or_null("Camera2D")
+	# Check if we have a joystick reference, try to find it if we don't
+	if not joystick:
+		find_gui()
+		if not joystick:
+			return
 	
-	if camera:
-		# Get the current camera offset and convert to screen position
-		var camera_offset = camera.get_screen_center_position()
+	# Only try to set properties if the joystick is a Control node
+	if joystick is Control:
+		# For Control nodes in a CanvasLayer, we can set their anchors and margins
 		
-		# Position the joystick at the bottom left of the screen
-		# You can adjust these offsets as needed
-		var joystick_pos = Vector2(
-			camera_offset.x - viewport_rect.size.x/2 + joystick.size.x/2, 
-			camera_offset.y + viewport_rect.size.y/2 - joystick.size.y/2
-		)
+		# Try to set the anchors - use try/catch since not all Control nodes might support these properties
+		if joystick.has_method("set_anchors_preset"):
+			# Use the preset for bottom-left corner
+			joystick.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		else:
+			# Manually set anchors if possible
+			if "anchor_top" in joystick:
+				joystick.anchor_top = 1.0
+				joystick.anchor_bottom = 1.0
+				joystick.anchor_left = 0.0
+				joystick.anchor_right = 0.0
 		
-		# Apply the position to the joystick
-		joystick.global_position = joystick_pos
+		# Set margins if possible
+		if "offset_left" in joystick:
+			joystick.offset_left = 20
+			joystick.offset_right = joystick.offset_left + 150
+			joystick.offset_top = -170
+			joystick.offset_bottom = -20
+		
+		# For older Godot versions or custom controls that might use different properties
+		if "margin_left" in joystick:
+			joystick.margin_left = 20
+			joystick.margin_right = 170
+			joystick.margin_top = -170
+			joystick.margin_bottom = -20
+		
+		# Backup approach - just set position directly
+		joystick.position = Vector2(20, get_viewport_rect().size.y - 170)
+		
+		# Queue redraw if the method exists
+		if joystick.has_method("queue_redraw"):
+			joystick.queue_redraw()
+	else:
+		# For non-Control nodes, we might need a different approach
+		# This will depend on what type of node the joystick actually is
+		pass
