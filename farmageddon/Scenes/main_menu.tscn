@@ -1,0 +1,397 @@
+[gd_scene load_steps=2 format=3 uid="uid://cwnku8x6gisph"]
+
+[sub_resource type="GDScript" id="GDScript_87k6s"]
+script/source = "extends Control
+
+# Network and room management variables
+var server_port = 8910
+var max_players = 4
+var player_name = \"\"
+var room_code = \"\"
+var connected_players = []
+var is_host = false
+
+# UI references
+onready var main_panel = $MainPanel
+onready var host_panel = $HostPanel
+onready var join_panel = $JoinPanel
+onready var lobby_panel = $LobbyPanel
+onready var name_input = $MainPanel/VBoxContainer/NameInput
+onready var room_code_display = $HostPanel/VBoxContainer/RoomCodeDisplay
+onready var room_code_input = $JoinPanel/VBoxContainer/RoomCodeInput
+onready var player_list = $LobbyPanel/VBoxContainer/PlayerList
+onready var start_game_button = $LobbyPanel/VBoxContainer/StartGameButton
+
+# Network peer
+var network = NetworkedMultiplayerENet.new()
+
+func _ready():
+	# Connect network signals
+	get_tree().connect(\"network_peer_connected\", self, \"_player_connected\")
+	get_tree().connect(\"network_peer_disconnected\", self, \"_player_disconnected\")
+	get_tree().connect(\"connected_to_server\", self, \"_connected_to_server\")
+	get_tree().connect(\"connection_failed\", self, \"_connection_failed\")
+	get_tree().connect(\"server_disconnected\", self, \"_server_disconnected\")
+	
+	# Initialize UI - Hide all panels except main
+	host_panel.visible = false
+	join_panel.visible = false
+	lobby_panel.visible = false
+	main_panel.visible = true
+	
+	# Only show start game button for host
+	start_game_button.visible = false
+
+# UI Button handlers
+func _on_HostButton_pressed():
+	if name_input.text.strip_edges() == \"\":
+		_show_error(\"Please enter a name\")
+		return
+		
+	player_name = name_input.text.strip_edges()
+	_create_room()
+	
+func _on_JoinButton_pressed():
+	if name_input.text.strip_edges() == \"\":
+		_show_error(\"Please enter a name\")
+		return
+		
+	player_name = name_input.text.strip_edges()
+	_show_join_panel()
+	
+func _on_ConnectButton_pressed():
+	if room_code_input.text.strip_edges() == \"\":
+		_show_error(\"Please enter a room code\")
+		return
+		
+	room_code = room_code_input.text.strip_edges().to_upper()
+	_join_room()
+	
+func _on_StartGameButton_pressed():
+	if connected_players.size() < 2:
+		_show_error(\"Need at least 2 players to start\")
+		return
+		
+	# Update network manager before starting game
+	var network_manager = get_node(\"/root/NetworkManager\")
+	network_manager.connected_players = connected_players
+	network_manager.player_name = player_name
+	network_manager.is_host = is_host
+	network_manager.room_code = room_code
+	
+	# Tell all clients to start the game
+	rpc(\"start_game\")
+	
+func _on_BackButton_pressed():
+	# Clean up any existing connections
+	if network.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
+		network.close_connection()
+		get_tree().network_peer = null
+	
+	# Return to main panel
+	host_panel.visible = false
+	join_panel.visible = false
+	lobby_panel.visible = false
+	main_panel.visible = true
+	
+	# Reset variables
+	connected_players.clear()
+	is_host = false
+	room_code = \"\"
+
+# Room management functions
+func _create_room():
+	# Generate a 6-character room code
+	room_code = _generate_room_code()
+	room_code_display.text = room_code
+	
+	# Create the server
+	network.create_server(server_port, max_players)
+	get_tree().network_peer = network
+	
+	# Add self to players list
+	connected_players.append({
+		id = get_tree().get_network_unique_id(),
+		name = player_name,
+		is_host = true
+	})
+	
+	is_host = true
+	_show_host_panel()
+	
+func _join_room():
+	# IP would be determined by the room code in a real implementation
+	# For now, we'll assume localhost for testing
+	var ip = \"127.0.0.1\"
+	
+	# Connect to the server
+	network.create_client(ip, server_port)
+	get_tree().network_peer = network
+
+# Network callback functions
+func _player_connected(id):
+	# Someone connected to us
+	if is_host:
+		# Tell the connected player about all existing players
+		rpc_id(id, \"register_player\", connected_players)
+		
+		# Tell everyone about the new player
+		rpc(\"add_player\", id, \"Waiting for name...\", false)
+
+func _player_disconnected(id):
+	# Remove player from list
+	for i in range(connected_players.size()):
+		if connected_players[i].id == id:
+			connected_players.remove(i)
+			break
+			
+	# Update the player list
+	_update_player_list()
+	
+	# Notify others about disconnection
+	rpc(\"remove_player\", id)
+
+func _connected_to_server():
+	# Successfully connected to the host
+	# Register our player info with the server
+	rpc_id(1, \"register_player_info\", get_tree().get_network_unique_id(), player_name)
+	
+	# Show the lobby panel
+	_show_lobby_panel()
+
+func _connection_failed():
+	_show_error(\"Failed to connect to the room\")
+	_on_BackButton_pressed()
+
+func _server_disconnected():
+	_show_error(\"Host has closed the room\")
+	_on_BackButton_pressed()
+
+# Remote procedure calls (RPCs)
+remote func register_player(players):
+	# Called on clients when they first connect
+	connected_players = players
+	_update_player_list()
+
+remote func register_player_info(id, name):
+	# Called on the host when a new player connects
+	# Add the new player to our list
+	connected_players.append({
+		id = id,
+		name = name,
+		is_host = false
+	})
+	
+	# Update the player list for everyone
+	_update_player_list()
+	
+	# Tell everyone about the new player
+	rpc(\"add_player\", id, name, false)
+
+remote func add_player(id, name, is_host):
+	# Called on all clients when a new player joins
+	var found = false
+	
+	# Check if player is already in the list
+	for i in range(connected_players.size()):
+		if connected_players[i].id == id:
+			connected_players[i].name = name
+			connected_players[i].is_host = is_host
+			found = true
+			break
+			
+	# If not found, add them
+	if not found:
+		connected_players.append({
+			id = id,
+			name = name,
+			is_host = is_host
+		})
+		
+	_update_player_list()
+
+remote func remove_player(id):
+	# Called on all clients when a player disconnects
+	for i in range(connected_players.size()):
+		if connected_players[i].id == id:
+			connected_players.remove(i)
+			break
+			
+	_update_player_list()
+
+remote func start_game():
+	# Called on all clients when the host starts the game
+	# Load the game scene
+	get_tree().change_scene(\"res://Game.tscn\") # Change this to your game scene path
+
+# Helper functions
+func _generate_room_code():
+	# Generate a 6-character room code
+	var chars = \"ABCDEFGHJKLMNPQRSTUVWXYZ23456789\"
+	var code = \"\"
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	
+	for i in range(6):
+		var index = rng.randi_range(0, chars.length() - 1)
+		code += chars[index]
+		
+	return code
+
+func _update_player_list():
+	# Clear the existing list
+	for child in player_list.get_children():
+		child.queue_free()
+		
+	# Add each player to the list
+	for player in connected_players:
+		var label = Label.new()
+		var prefix = \"[Host] \" if player.is_host else \"\"
+		label.text = prefix + player.name
+		player_list.add_child(label)
+		
+	# Only host can start the game
+	start_game_button.visible = is_host
+
+func _show_host_panel():
+	main_panel.visible = false
+	join_panel.visible = false
+	host_panel.visible = true
+	lobby_panel.visible = true
+
+func _show_join_panel():
+	main_panel.visible = false
+	host_panel.visible = false
+	join_panel.visible = true
+	lobby_panel.visible = false
+
+func _show_lobby_panel():
+	main_panel.visible = false
+	host_panel.visible = false
+	join_panel.visible = false
+	lobby_panel.visible = true
+
+func _show_error(message):
+	# In a real implementation, display an error dialog
+	print(\"ERROR: \" + message)
+	# OS.alert(message, \"Error\")
+"
+
+[node name="MainMenu" type="Node2D"]
+script = SubResource("GDScript_87k6s")
+
+[node name="MainPanel" type="Panel" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainPanel"]
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -33.0
+offset_top = -44.0
+offset_right = 34.0
+offset_bottom = 88.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="MainPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="NameInput" type="LineEdit" parent="MainPanel/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Enter Name"
+
+[node name="HostButton" type="Button" parent="MainPanel/VBoxContainer"]
+layout_mode = 2
+text = "Host"
+
+[node name="JoinButton" type="Button" parent="MainPanel/VBoxContainer"]
+layout_mode = 2
+text = "Join"
+
+[node name="HostPanel" type="Panel" parent="."]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HostPanel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TitleLabel" type="Label" parent="HostPanel/VBoxContainer"]
+layout_mode = 2
+text = "Host Lobby"
+
+[node name="RoomCodeLabel" type="Label" parent="HostPanel/VBoxContainer"]
+layout_mode = 2
+text = "Room Code"
+
+[node name="RoomCodeDisplay" type="Label" parent="HostPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="InstructionsLabel" type="Label" parent="HostPanel/VBoxContainer"]
+layout_mode = 2
+text = "Tell your friends this code"
+
+[node name="BackButton" type="Button" parent="HostPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="JoinPanel" type="Panel" parent="."]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="JoinPanel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TitleLabel" type="Label" parent="JoinPanel/VBoxContainer"]
+layout_mode = 2
+text = "Join Lobby"
+
+[node name="RoomCodeInput" type="LineEdit" parent="JoinPanel/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Input Code"
+
+[node name="ConnectButton" type="Button" parent="JoinPanel/VBoxContainer"]
+layout_mode = 2
+text = "Connect"
+
+[node name="BackButton" type="Button" parent="JoinPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="LobbyPanel" type="Panel" parent="."]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="LobbyPanel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TitleLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
+layout_mode = 2
+text = "Lobby"
+
+[node name="PlayersLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
+layout_mode = 2
+text = "Players"
+
+[node name="PlayerList" type="VBoxContainer" parent="LobbyPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="StartGameButton" type="Button" parent="LobbyPanel/VBoxContainer"]
+layout_mode = 2
+text = "Start"
+
+[node name="BackButton" type="Button" parent="LobbyPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
